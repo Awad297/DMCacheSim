@@ -1,0 +1,106 @@
+//graph for each generator (graph size and cache size included)
+
+#include <iostream>
+#include  <iomanip>
+#include <cmath>
+
+using namespace std;
+
+#define        DBG                1
+#define        DRAM_SIZE        (64*1024*1024)
+#define        LINE_SIZE         4
+#define        CACHE_SIZE        (64*1024)    // Change for different sizes
+
+enum cacheResType {MISS=0, HIT=1};
+
+int *DMC[2];
+bool *DMCv;
+
+int offsetSize = log2(LINE_SIZE);
+int indexSize = log2(CACHE_SIZE/LINE_SIZE);
+//create and initialize 2d dynamic array for direct mapped cache and dynamic array storing valid
+void initDMC()
+{
+    for(int i = 0; i < 2; i++)
+        DMC[i] = new int[CACHE_SIZE/LINE_SIZE];
+    
+    DMCv = new bool [CACHE_SIZE/LINE_SIZE];
+    for(int i = 0; i < (CACHE_SIZE/LINE_SIZE); i++)
+        DMCv[i] = false;
+        
+}
+
+/* The following implements a random number generator */
+unsigned int m_w = 0xABABAB55;    /* must not be zero, nor 0x464fffff */
+unsigned int m_z = 0x05080902;    /* must not be zero, nor 0x9068ffff */
+unsigned int rand_()
+{
+    m_z = 36119 * (m_z & 65535) + (m_z >> 16);
+    m_w = 16000 * (m_w & 65535) + (m_w >> 16);
+    return (m_z << 16) + m_w;  /* 32-bit result */
+}
+
+unsigned int memGen2()
+{
+    static unsigned int addr=0;
+    return (addr++)%(DRAM_SIZE);
+}
+
+unsigned int memGen3()
+{
+    static unsigned int addr=0;
+    return  rand_()%(64*1024);
+}
+
+unsigned int memGen1()
+{
+    return rand_()%(DRAM_SIZE);
+}
+
+unsigned int memGen4()
+{
+    static unsigned int addr=0;
+    return (addr++)%(1024*4);
+}
+
+unsigned int memGen5()
+{
+    static unsigned int addr=0;
+    return (addr++)%(1024*64);
+}
+
+unsigned int memGen6()
+{
+    static unsigned int addr=0;
+    return (addr+=64)%(128*1024);
+}
+
+
+// Direct Mapped Cache Simulator
+//cacheResType cacheSimDM(unsigned int addr)
+//{
+    
+//}
+
+char *msg[2] = {(char *)"Miss",(char *)"Hit"};
+
+#define        NO_OF_Iterations    1000000        // Change to 1,000,000
+int main()
+{
+    unsigned int hit = 0;
+    cacheResType r;
+    
+    unsigned int addr;
+    cout << "Direct Mapped Cache Simulator\n";
+    
+    initDMC();
+    
+    for(int inst=0;inst<NO_OF_Iterations;inst++)
+    {
+        addr = memGen1();
+        //r = cacheSimDM(addr);
+        //if(r == HIT) hit++;
+        cout <<"0x" << setfill('0') << setw(8) << hex << addr <<" ("<< msg[1] <<")\n";
+    }
+    cout << "Hit ratio = " << (100*hit/NO_OF_Iterations)<< endl;
+    }
