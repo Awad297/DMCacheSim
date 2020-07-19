@@ -1,4 +1,6 @@
 //graph for each generator (graph size and cache size included)
+//set size of cache to 64 when testing different line sizes
+//set size of line to 16 when testing different cache sizes
 
 #include <iostream>
 #include  <iomanip>
@@ -7,9 +9,9 @@
 using namespace std;
 
 #define        DBG                1
-#define        DRAM_SIZE        (64*1024*1024)
-#define        LINE_SIZE         4
-#define        CACHE_SIZE        (64*1024)    // Change for different sizes
+#define        DRAM_SIZE         (64*1024*1024)
+#define        LINE_SIZE         16
+#define        CACHE_SIZE        (8*1024)    // Change for different sizes
 
 enum cacheResType {MISS=0, HIT=1};
 
@@ -18,16 +20,55 @@ bool *DMCv;
 
 int offsetSize = log2(LINE_SIZE);
 int indexSize = log2(CACHE_SIZE/LINE_SIZE);
+unsigned int indexMask = 1;
+
 //create and initialize 2d dynamic array for direct mapped cache and dynamic array storing valid
 void initDMC()
 {
     for(int i = 0; i < 2; i++)
         DMC[i] = new int[CACHE_SIZE/LINE_SIZE];
     
+    for(int i = 0; i < (CACHE_SIZE/LINE_SIZE); i++){
+        DMC[1][i] = i;
+        DMC[0][i] = -1;
+    }
+    
     DMCv = new bool [CACHE_SIZE/LINE_SIZE];
     for(int i = 0; i < (CACHE_SIZE/LINE_SIZE); i++)
         DMCv[i] = false;
-        
+    
+    for(int i = 0; i < indexSize - 1; i++){
+        indexMask = indexMask << 1;
+        indexMask++;
+    }
+}
+
+// Direct Mapped Cache Simulator
+cacheResType cacheSimDM(unsigned int addr)
+{
+    addr = addr >> offsetSize;
+    unsigned int DMCIndex = addr & indexMask;
+    addr = addr >> indexSize;
+    unsigned int DMCTag = addr;
+    for(int i = 0; i < (CACHE_SIZE/LINE_SIZE); i++){
+        if(DMCIndex == DMC[1][i]){                      //check index from address with index table in DM
+            if(DMCv[i] == true){                        //if index from address is found in table, check validity
+                if(DMC[0][i] == DMCTag){                //if valid, check if tag in table is the same as the Tag bits in address
+                    return HIT;                         //if tag from address matches the tag in the table, then its a hit
+                }
+                else{
+                    DMC[0][i] = DMCTag;                 //if tag in address not equal to tag in table index then set the tag in table index to tag from address
+                    return MISS;                        //Miss
+                }
+            }
+            else{
+                DMC[0][i] = DMCTag;
+                DMCv[i] = true;
+                return MISS;
+            }
+        }
+    }
+    return MISS;
 }
 
 /* The following implements a random number generator */
@@ -76,18 +117,12 @@ unsigned int memGen6()
 }
 
 
-// Direct Mapped Cache Simulator
-//cacheResType cacheSimDM(unsigned int addr)
-//{
-    
-//}
-
 char *msg[2] = {(char *)"Miss",(char *)"Hit"};
 
 #define        NO_OF_Iterations    1000000        // Change to 1,000,000
 int main()
 {
-    unsigned int hit = 0;
+    int hit = 0;
     cacheResType r;
     
     unsigned int addr;
@@ -97,10 +132,11 @@ int main()
     
     for(int inst=0;inst<NO_OF_Iterations;inst++)
     {
-        addr = memGen1();
-        //r = cacheSimDM(addr);
-        //if(r == HIT) hit++;
-        cout <<"0x" << setfill('0') << setw(8) << hex << addr <<" ("<< msg[1] <<")\n";
+        addr = memGen6();
+        r = cacheSimDM(addr);
+        if(r == HIT) hit++;
+        cout <<"0x" << setfill('0') << setw(8) << hex << addr <<" ("<< msg[r] <<")\n";
     }
-    cout << "Hit ratio = " << (100*hit/NO_OF_Iterations)<< endl;
-    }
+    cout << "Hit ratio = " << (100*hit/1000000)<< endl << endl;
+    
+}
